@@ -14,7 +14,13 @@ app.use(bodyParser.json());
 
 const bookingsFile = './bookings.json';
 
-app.get('/api/bookings', (req, res) => res.json(bookings));
+app.get('/api/bookings', (req, res) => {
+  let bookings = [];
+  if (fs.existsSync(bookingsFile)) {
+    bookings = JSON.parse(fs.readFileSync(bookingsFile, 'utf8'));
+  }
+  res.json(bookings);
+});
 
 app.post('/api/bookings/request', async (req, res) => {
   const { date, name, phone, email, notes } = req.body;
