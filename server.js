@@ -28,7 +28,11 @@ app.post('/api/bookings/request', async (req, res) => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
     }
-  });
+  })
+  const existing = bookings.find(b => b.date === date);
+    if (existing?.status === 'blocked') {
+    return res.json({ success: false, message: 'This date is unavailable.' });
+};
 
   try {
     await transporter.sendMail({
