@@ -22,19 +22,31 @@ app.get('/api/bookings', (req, res) => res.json(bookings));
 
 app.post('/api/bookings/request', async (req, res) => {
   const { date, name, phone, email, notes } = req.body;
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  })
+
+  if (!date || !name || !email) {
+    return res.status(400).json({ success: false, message: 'Missing required fields.' });
+  }
+
+  let bookings = [];
+  if (fs.existsSync(bookingsFile)) {
+    bookings = JSON.parse(fs.readFileSync(bookingsFile, 'utf8'));
+  }
+
+  // Prevent booking on blocked dates
   const existing = bookings.find(b => b.date === date);
-    if (existing?.status === 'blocked') {
-    return res.json({ success: false, message: 'This date is unavailable.' });
-};
+  if (existing?.status === 'blocked') {
+    return res.json({ success: false, message: 'This date is blocked and cannot be booked.' });
+  }
 
   try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: process.env.EMAIL_TO,
@@ -42,9 +54,15 @@ app.post('/api/bookings/request', async (req, res) => {
       text: `Date: ${date}\nName: ${name}\nPhone: ${phone}\nEmail: ${email}\nNotes: ${notes}`
     });
 
-    bookings.push({ date, title: 'Booked' });
-    fs.writeFileSync(bookingsFile, JSON.stringify(bookings));
+    // Remove previous non-blocked booking (if any)
+    bookings = bookings.filter(b => !(b.date === date && b.status !== 'blocked'));
+
+    // Add the new booking request
+    bookings.push({ date, status: 'requested', name, phone, email, notes });
+
+    fs.writeFileSync(bookingsFile, JSON.stringify(bookings, null, 2));
     res.json({ success: true });
+
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false });
