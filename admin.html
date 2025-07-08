@@ -13,7 +13,7 @@
 </head>
 <body>
 
-<h3>Tap a day to toggle: Available / Blocked</h3>
+<h3>Tap a day to toggle: Available → Blocked → Booked</h3>
 <div id="calendar"></div>
 
 <script>
@@ -31,6 +31,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    const statusCycle = ['available', 'blocked', 'booked'];
+
     const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
       initialView: 'dayGridMonth',
       selectable: true,
@@ -42,16 +44,17 @@
       }],
       eventDataTransform: e => ({
         ...e,
-        title: e.status.charAt(0).toUpperCase() + e.status.slice(1),
+        title: e.status ? e.status.charAt(0).toUpperCase() + e.status.slice(1) : 'Booked',
         backgroundColor: getColor(e.status),
-        borderColor: getColor(e.status)
+        borderColor: getColor(e.status),
+        extendedProps: { status: e.status }
       }),
       dateClick: function(info) {
         const date = info.dateStr;
         const current = calendar.getEvents().find(e => e.startStr === date);
-        const statusCycle = ['available', 'blocked'];
         const currentStatus = current?.extendedProps?.status || 'available';
-        const nextStatus = currentStatus === 'available' ? 'blocked' : 'available';
+        const currentIndex = statusCycle.indexOf(currentStatus);
+        const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
 
         fetch(API + '/api/admin/set-status', {
           method: 'POST',
