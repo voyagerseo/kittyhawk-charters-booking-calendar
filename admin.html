@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – Manage Calendar</title>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.0/main.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 10px; margin: 0; }
+    #calendar { max-width: 100%; margin: 0 auto; }
+  </style>
+</head>
+<body>
+
+<h3>Tap a day to toggle: Available → Blocked → Booked</h3>
+<div id="calendar"></div>
+
+<script>
+  const API = 'https://boat-charter-booking.onrender.com';
+  let PASSWORD = localStorage.getItem('adminPass') || prompt('Enter Admin Password:');
+  localStorage.setItem('adminPass', PASSWORD);
+
+  function getColor(status) {
+    return {
+      booked: '#ff4d4d',
+      requested: '#ffd966',
+      blocked: '#999',
+      available: '#4caf50'
+    }[status] || '#ccc';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const statusCycle = ['available', 'blocked', 'booked'];
+
+    const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+      initialView: 'dayGridMonth',
+      selectable: true,
+      editable: false,
+      eventSources: [{
+        url: API + '/api/bookings/all',
+        method: 'GET',
+        failure: () => alert('Failed to load events')
+      }],
+      eventDataTransform: e => ({
+        ...e,
+        title: e.status ? e.status.charAt(0).toUpperCase() + e.status.slice(1) : 'Booked',
+        backgroundColor: getColor(e.status),
+        borderColor: getColor(e.status),
+        extendedProps: { status: e.status }
+      }),
+      dateClick: function(info) {
+        const date = info.dateStr;
+        const current = calendar.getEvents().find(e => e.startStr === date);
+        const currentStatus = current?.extendedProps?.status || 'available';
+        const currentIndex = statusCycle.indexOf(currentStatus);
+        const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
+
+        fetch(API + '/api/admin/set-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ date, status: nextStatus, password: PASSWORD })
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            calendar.refetchEvents();
+          } else {
+            alert('Failed to update: ' + d.message);
+          }
+        });
+      }
+    });
+
+    calendar.render();
+  });
+</script>
+
+</body>
+</html>
