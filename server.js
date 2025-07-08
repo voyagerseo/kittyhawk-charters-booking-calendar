@@ -12,11 +12,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-let bookings = [];
 const bookingsFile = './bookings.json';
-if (fs.existsSync(bookingsFile)) {
-  bookings = JSON.parse(fs.readFileSync(bookingsFile));
-}
 
 app.get('/api/bookings', (req, res) => res.json(bookings));
 
@@ -27,12 +23,12 @@ app.post('/api/bookings/request', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Missing required fields.' });
   }
 
+  // 🔄 Always load the most recent bookings
   let bookings = [];
   if (fs.existsSync(bookingsFile)) {
     bookings = JSON.parse(fs.readFileSync(bookingsFile, 'utf8'));
   }
 
-  // Prevent booking on blocked dates
   const existing = bookings.find(b => b.date === date);
   if (existing?.status === 'blocked') {
     return res.json({ success: false, message: 'This date is blocked and cannot be booked.' });
@@ -54,7 +50,7 @@ app.post('/api/bookings/request', async (req, res) => {
       text: `Date: ${date}\nName: ${name}\nPhone: ${phone}\nEmail: ${email}\nNotes: ${notes}`
     });
 
-    // Remove previous non-blocked booking (if any)
+    // Remove existing non-blocked booking for the date
     bookings = bookings.filter(b => !(b.date === date && b.status !== 'blocked'));
 
     // Add the new booking request
