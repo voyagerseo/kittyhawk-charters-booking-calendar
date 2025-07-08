@@ -18,7 +18,7 @@ if (fs.existsSync(bookingsFile)) {
 app.get('/api/bookings', (req, res) => res.json(bookings));
 
 app.post('/api/bookings/request', async (req, res) => {
-  const { date, name, email, notes } = req.body;
+  const { date, name, phone, email, notes } = req.body;
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -32,7 +32,7 @@ app.post('/api/bookings/request', async (req, res) => {
       from: process.env.EMAIL_USER,
       to: process.env.EMAIL_TO,
       subject: 'New Booking Request',
-      text: `Date: ${date}\nName: ${name}\nEmail: ${email}\nNotes: ${notes}`
+      text: `Date: ${date}\nName: ${name}\nPhone: ${phone}\nEmail: ${email}\nNotes: ${notes}`
     });
 
     bookings.push({ date, title: 'Booked' });
